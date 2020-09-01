@@ -457,6 +457,7 @@ class TestIoTHubDevices(IoTLiveScenarioTest):
         )
 
         # With connection string
+        
         self.cmd(
             '''iot hub device-identity update -d {} --login {} --set authentication.symmetricKey.primaryKey=""
                  authentication.symmetricKey.secondaryKey=""'''.format(
