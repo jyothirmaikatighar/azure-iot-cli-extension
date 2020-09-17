@@ -36,6 +36,7 @@ def load_command_table(self, _):
         cmd_group.generic_update_command(
             "update", getter_name="iot_device_show", setter_name="iot_device_update"
         )
+        cmd_group.command('renew-key', 'iot_device_key_renew')
 
         cmd_group.command(
             "show-connection-string",

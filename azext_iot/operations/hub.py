@@ -4,6 +4,10 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
+import random
+import base64
+
+from enum import Enum
 from os.path import exists, basename
 from time import time, sleep
 import six
@@ -41,6 +45,16 @@ from azext_iot.operations.generic import _execute_query, _process_top
 
 
 logger = get_logger(__name__)
+
+
+# CUSTOM TYPE
+class RenewKeyType(Enum):
+    """
+    Type of the RegenerateKey for the device.
+    """
+    Primary = 'primary'
+    Secondary = 'secondary'
+    Swap = 'swap'
 
 
 # Query
@@ -320,6 +334,41 @@ def iot_device_delete(
         raise CLIError(unpack_msrest_error(e))
     except LookupError as err:
         raise CLIError(err)
+
+
+def iot_device_key_renew(cmd, hub_name, device_id, regenerate_key, resource_group_name=None, login=None):
+    discovery = IotHubDiscovery(cmd)
+    target = discovery.get_target(
+        hub_name=hub_name, resource_group_name=resource_group_name, login=login
+    )
+    resolver = SdkResolver(target=target)
+    service_sdk = resolver.get_sdk(SdkType.service_sdk)
+    device = service_sdk.registry_manager.get_device(id=device_id, raw=True).response.json()
+    if (device['authentication']['type'] == 'sas'):
+        if regenerate_key == RenewKeyType.Primary.value:
+            device['authentication']['symmetricKey']['primaryKey'] = _generateKey()
+        if regenerate_key == RenewKeyType.Secondary.value:
+            device['authentication']['symmetricKey']['secondaryKey'] = _generateKey()
+        if regenerate_key == RenewKeyType.Swap.value:
+            temp = device['authentication']['symmetricKey']['primaryKey']
+            device['authentication']['symmetricKey']['primaryKey'] = device['authentication']['symmetricKey']['secondaryKey']
+            device['authentication']['symmetricKey']['secondaryKey'] = temp
+        if device['etag']:
+            headers = {}
+            headers["If-Match"] = '"{}"'.format(device['etag'])
+            return service_sdk.registry_manager.create_or_update_device(id=device_id, device=device, custom_headers=headers)
+        else:
+            raise CLIError("Device etag not found.")
+    else:
+        raise CLIError("Device should have sas authentication")
+
+
+def _generateKey(byteLength=32):
+    key = ''
+    while byteLength > 0:
+        key += chr(random.randrange(1, 128))
+        byteLength -= 1
+    return base64.b64encode(key.encode()).decode('utf-8')
 
 
 def iot_device_get_parent(

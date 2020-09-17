@@ -209,6 +209,14 @@ helps[
         --set status=disabled capabilities.iotEdge=true
 """
 
+helps['iot hub device-identity renew-key'] = """
+type: command
+short-summary: Regenerate keys of a device with sas authentication of an IoT hub.
+examples:
+  - name: Regenerate primary key of a device of an IoT hub.
+    text: az iot hub device-identity renew-key -d device123 -n IOThubtest --rk Primary
+"""
+
 helps[
     "iot hub device-identity delete"
 ] = """
