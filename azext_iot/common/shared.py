@@ -214,3 +214,13 @@ class AuthenticationType(Enum):
 
     keyBased = "key"
     identityBased = "identity"
+
+
+# CUSTOM TYPE
+class RenewKeyType(Enum):
+    """
+    Type of the RegenerateKey for the device.
+    """
+    Primary = 'primary'
+    Secondary = 'secondary'
+    Swap = 'swap'

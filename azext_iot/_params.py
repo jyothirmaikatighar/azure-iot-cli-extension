@@ -34,7 +34,7 @@ from azext_iot.common.shared import (
 )
 from azext_iot._validators import mode2_iot_login_handler
 from azext_iot.assets.user_messages import info_param_properties_device
-from azure.cli.command_modules.iot.shared import RenewKeyType
+from azext_iot.common.shared import RenewKeyType
 
 
 hub_name_type = CLIArgumentType(

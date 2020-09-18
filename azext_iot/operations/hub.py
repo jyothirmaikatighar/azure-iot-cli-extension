@@ -4,10 +4,6 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-import random
-import base64
-
-from enum import Enum
 from os.path import exists, basename
 from time import time, sleep
 import six
@@ -42,19 +38,10 @@ from azext_iot.common.utility import (
 )
 from azext_iot._factory import SdkResolver, CloudError
 from azext_iot.operations.generic import _execute_query, _process_top
+from azext_iot.common.shared import RenewKeyType
 
 
 logger = get_logger(__name__)
-
-
-# CUSTOM TYPE
-class RenewKeyType(Enum):
-    """
-    Type of the RegenerateKey for the device.
-    """
-    Primary = 'primary'
-    Secondary = 'secondary'
-    Swap = 'swap'
 
 
 # Query
@@ -267,23 +254,9 @@ def iot_device_update(
     target = discovery.get_target(
         hub_name=hub_name, resource_group_name=resource_group_name, login=login
     )
-    resolver = SdkResolver(target=target)
-    service_sdk = resolver.get_sdk(SdkType.service_sdk)
-
-    try:
-        updated_device = _handle_device_update_params(parameters)
-        etag = parameters.get("etag", None)
-        if etag:
-            headers = {}
-            headers["If-Match"] = '"{}"'.format(etag)
-            return service_sdk.registry_manager.create_or_update_device(
-                id=device_id, device=updated_device, custom_headers=headers
-            )
-        raise LookupError("device etag not found.")
-    except CloudError as e:
-        raise CLIError(unpack_msrest_error(e))
-    except LookupError as err:
-        raise CLIError(err)
+    updated_device = _handle_device_update_params(parameters)
+    etag = parameters.get("etag", None)
+    return _iot_device_update(target, updated_device, device_id, etag)
 
 
 def _handle_device_update_params(parameters):
@@ -341,9 +314,7 @@ def iot_device_key_renew(cmd, hub_name, device_id, regenerate_key, resource_grou
     target = discovery.get_target(
         hub_name=hub_name, resource_group_name=resource_group_name, login=login
     )
-    resolver = SdkResolver(target=target)
-    service_sdk = resolver.get_sdk(SdkType.service_sdk)
-    device = service_sdk.registry_manager.get_device(id=device_id, raw=True).response.json()
+    device = _iot_device_show(target, device_id)
     if (device['authentication']['type'] == 'sas'):
         if regenerate_key == RenewKeyType.Primary.value:
             device['authentication']['symmetricKey']['primaryKey'] = _generateKey()
@@ -353,22 +324,36 @@ def iot_device_key_renew(cmd, hub_name, device_id, regenerate_key, resource_grou
             temp = device['authentication']['symmetricKey']['primaryKey']
             device['authentication']['symmetricKey']['primaryKey'] = device['authentication']['symmetricKey']['secondaryKey']
             device['authentication']['symmetricKey']['secondaryKey'] = temp
-        if device['etag']:
-            headers = {}
-            headers["If-Match"] = '"{}"'.format(device['etag'])
-            return service_sdk.registry_manager.create_or_update_device(id=device_id, device=device, custom_headers=headers)
-        else:
-            raise CLIError("Device etag not found.")
+        return _iot_device_update(target, device, device_id, device['etag'])
     else:
-        raise CLIError("Device should have sas authentication")
+        raise CLIError("Device authentication should be of type sas")
 
 
 def _generateKey(byteLength=32):
+    import random
+    import base64
     key = ''
     while byteLength > 0:
         key += chr(random.randrange(1, 128))
         byteLength -= 1
     return base64.b64encode(key.encode()).decode('utf-8')
+
+
+def _iot_device_update(target, device, device_id, etag):
+    resolver = SdkResolver(target=target)
+    service_sdk = resolver.get_sdk(SdkType.service_sdk)
+
+    try:
+        if etag:
+            headers = {}
+            headers["If-Match"] = '"{}"'.format(etag)
+            return service_sdk.registry_manager.create_or_update_device(id=device_id, device=device, custom_headers=headers)
+        else:
+            raise LookupError("Device etag not found.")
+    except CloudError as e:
+        raise CLIError(unpack_msrest_error(e))
+    except LookupError as err:
+        raise CLIError(err)
 
 
 def iot_device_get_parent(
