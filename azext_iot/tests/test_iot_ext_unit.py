@@ -470,6 +470,38 @@ class TestDeviceUpdate:
             )
 
 
+class TestDeviceRegenerateKey:
+    @pytest.fixture(params=[200])
+    def serviceclient(self, mocker, fixture_ghcs, fixture_sas, request):
+        service_client = mocker.patch(path_service_client)
+        test_side_effect = [
+            build_mock_response(mocker, 200, generate_device_show()),
+            build_mock_response(mocker, 200, {}),
+        ]
+        service_client.side_effect = test_side_effect
+        return service_client
+
+    @pytest.mark.parametrize("req",["primary", "secondary", "swap"])
+    def test_device_key_renew(self, fixture_cmd, serviceclient, req):
+        subject.iot_device_key_renew(
+            fixture_cmd, hub_name=mock_target["entity"], device_id=device_id, regenerate_key=req
+        ),
+        args = serviceclient.call_args
+        assert (
+            "{}/devices/{}?".format(mock_target["entity"], device_id) in args[0][0].url
+        )
+        assert args[0][0].method == "PUT"
+
+        body = json.loads(args[0][0].body)
+        if(req == "primary"):
+            assert body["authentication"]["symmetricKey"]["primaryKey"] != generate_device_show().get('authentication').get('symmetricKey').get('primaryKey')
+        if(req == "secondary"):
+            assert body["authentication"]["symmetricKey"]["secondaryKey"] != generate_device_show().get('authentication').get('symmetricKey').get('secondaryKey')
+        if(req == "swap"):
+            assert body["authentication"]["symmetricKey"]["primaryKey"] == generate_device_show().get('authentication').get('symmetricKey').get('secondaryKey')
+            assert body["authentication"]["symmetricKey"]["secondaryKey"] == generate_device_show().get('authentication').get('symmetricKey').get('primaryKey')
+
+
 class TestDeviceDelete:
     @pytest.fixture(params=[(200, 204)])
     def serviceclient(self, mocker, fixture_ghcs, fixture_sas, request):

@@ -24,6 +24,7 @@ from azext_iot.common.shared import (
     ConfigType,
     KeyType,
     SettleType,
+    RenewKeyType
 )
 from azext_iot.iothub.providers.discovery import IotHubDiscovery
 from azext_iot.common.utility import (
@@ -38,7 +39,6 @@ from azext_iot.common.utility import (
 )
 from azext_iot._factory import SdkResolver, CloudError
 from azext_iot.operations.generic import _execute_query, _process_top
-from azext_iot.common.shared import RenewKeyType
 
 
 logger = get_logger(__name__)
@@ -256,7 +256,7 @@ def iot_device_update(
     )
     updated_device = _handle_device_update_params(parameters)
     etag = parameters.get("etag", None)
-    return _iot_device_update(target, updated_device, device_id, etag)
+    return _iot_device_update(target, device_id, updated_device, etag)
 
 
 def _handle_device_update_params(parameters):
@@ -324,7 +324,7 @@ def iot_device_key_renew(cmd, hub_name, device_id, regenerate_key, resource_grou
             temp = device['authentication']['symmetricKey']['primaryKey']
             device['authentication']['symmetricKey']['primaryKey'] = device['authentication']['symmetricKey']['secondaryKey']
             device['authentication']['symmetricKey']['secondaryKey'] = temp
-        return _iot_device_update(target, device, device_id, device['etag'])
+        return _iot_device_update(target, device_id, device, device['etag'])
     else:
         raise CLIError("Device authentication should be of type sas")
 
@@ -339,7 +339,7 @@ def _generateKey(byteLength=32):
     return base64.b64encode(key.encode()).decode('utf-8')
 
 
-def _iot_device_update(target, device, device_id, etag):
+def _iot_device_update(target, device_id, device, etag):
     resolver = SdkResolver(target=target)
     service_sdk = resolver.get_sdk(SdkType.service_sdk)
 
