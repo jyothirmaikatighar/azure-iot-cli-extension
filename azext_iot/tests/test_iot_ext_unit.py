@@ -615,8 +615,7 @@ class TestDeviceUpdate:
                 ),
                 CLIError,
             ),
-            (generate_device_show(authentication={"type": "doesnotexist"}), CLIError),
-            (generate_device_show(etag=None), CLIError),
+            (generate_device_show(authentication={"type": "doesnotexist"}), CLIError)
         ],
     )
     def test_device_update_invalid_args(self, serviceclient, req, exp):
@@ -643,18 +642,29 @@ class TestDeviceRegenerateKey:
     @pytest.fixture(params=[200])
     def serviceclient(self, mocker, fixture_ghcs, fixture_sas, request):
         service_client = mocker.patch(path_service_client)
+        kvp = {}
+        kvp.setdefault(
+            "authentication",
+            {
+                "symmetricKey": {
+                    "primaryKey": "123",
+                    "secondaryKey": "321"
+                },
+                "type": "sas"
+            }
+        )
         test_side_effect = [
-            build_mock_response(mocker, 200, generate_device_show()),
-            build_mock_response(mocker, 200, {}),
+            build_mock_response(mocker, 200, generate_device_show(**kvp)),
+            build_mock_response(mocker, 200, {})
         ]
         service_client.side_effect = test_side_effect
         return service_client
 
-    @pytest.mark.parametrize("req",["primary", "secondary", "swap"])
+    @pytest.mark.parametrize("req", ["primary", "secondary", "swap"])
     def test_device_key_renew(self, fixture_cmd, serviceclient, req):
         subject.iot_device_key_renew(
             fixture_cmd, hub_name=mock_target["entity"], device_id=device_id, regenerate_key=req
-        ),
+        )
         args = serviceclient.call_args
         assert (
             "{}/devices/{}?".format(mock_target["entity"], device_id) in args[0][0].url
@@ -663,12 +673,37 @@ class TestDeviceRegenerateKey:
 
         body = json.loads(args[0][0].body)
         if(req == "primary"):
-            assert body["authentication"]["symmetricKey"]["primaryKey"] != generate_device_show().get('authentication').get('symmetricKey').get('primaryKey')
+            assert body["authentication"]["symmetricKey"]["primaryKey"] != "123"
         if(req == "secondary"):
-            assert body["authentication"]["symmetricKey"]["secondaryKey"] != generate_device_show().get('authentication').get('symmetricKey').get('secondaryKey')
+            assert body["authentication"]["symmetricKey"]["secondaryKey"] != "321"
         if(req == "swap"):
-            assert body["authentication"]["symmetricKey"]["primaryKey"] == generate_device_show().get('authentication').get('symmetricKey').get('secondaryKey')
-            assert body["authentication"]["symmetricKey"]["secondaryKey"] == generate_device_show().get('authentication').get('symmetricKey').get('primaryKey')
+            assert body["authentication"]["symmetricKey"]["primaryKey"] == "321"
+            assert body["authentication"]["symmetricKey"]["secondaryKey"] == "123"
+
+    @pytest.fixture(params=[200])
+    def serviceclient_invalid_args(self, mocker, fixture_ghcs, fixture_sas, request):
+        service_client = mocker.patch(path_service_client)
+        kvp = {}
+        kvp.setdefault("authentication", {"type": "test"})
+        test_side_effect = [
+            build_mock_response(mocker, 200, generate_device_show(**kvp))
+        ]
+        service_client.side_effect = test_side_effect
+        return service_client
+
+    @pytest.mark.parametrize("req, exp", [("primary", CLIError), ("secondary", CLIError), ("swap", CLIError)])
+    def test_device_key_renew_invalid_args(self, fixture_cmd, serviceclient_invalid_args, req, exp):
+        with pytest.raises(exp):
+            subject.iot_device_key_renew(
+                fixture_cmd, hub_name=mock_target["entity"], device_id=device_id, regenerate_key=req
+            )
+
+    @pytest.mark.parametrize("req", ["primary", "secondary", "swap"])
+    def test_device_key_renew_error(self, serviceclient_generic_error, req):
+        with pytest.raises(CLIError):
+            subject.iot_device_key_renew(
+                fixture_cmd, hub_name=mock_target["entity"], device_id=device_id, regenerate_key=req
+            )
 
 
 class TestDeviceDelete:
