@@ -216,10 +216,10 @@ class AuthenticationType(Enum):
     identityBased = "identity"
 
 
-class RenewKeyType(Enum):
+class RegenerateKeyType(Enum):
     """
-    Type of the RegenerateKey for the device.
+    Target key type for regeneration.
     """
-    Primary = "primary"
-    Secondary = "secondary"
-    Swap = "swap"
+    primary = KeyType.primary.value
+    secondary = KeyType.secondary.value
+    swap = "swap"

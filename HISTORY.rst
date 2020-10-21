@@ -3,12 +3,39 @@
 Release History
 ===============
 
-0.11.0
+0.10.3
++++++++++++++++
+
+**General updates**
+
+* Python 3.5 support will soon be dropped corresponding with the official end of life date.
+* Formal python requires constraint added to constrain installs to Py 3.5+. 
+
+**IoT Plug-and-Play updates**
+
+* The in preview `az iot pnp` command group has been removed. PnP CLI functionality will be re-imagined at a future point in time.
+
+
+0.10.2
++++++++++++++++
+
+**IoT Hub updates**
+
+* Adds `az iot hub device-identity regenerate-key`.
+
+
+0.10.1
 +++++++++++++++
 
 **IoT Plug-and-Play updates**
 
-* Regenerated runtime SDK for API version 2020-09-30
+* Regenerated PnP runtime SDK to API version 2020-09-30
+* All `az iot pnp` commands still remain under preview and are subject to change or deletion.
+
+**IoT Hub updates**
+
+* All configuration/edge deployment list operations no longer have a default top. By default all configuration entities will be returned.
+  Existing --top input should not be affected.
 
 **IoT Hub updates**
 
