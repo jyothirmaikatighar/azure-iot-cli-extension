@@ -1187,7 +1187,7 @@ helps[
       text: >
         az iot dps enrollment create -g {resource_group_name} --dps-name {dps_name}
         --enrollment-id {enrollment_id} --attestation-type symmetrickey --allocation-policy custom
-        --webhook-url {webhook_url} --api-version {api_version}    
+        --webhook-url {webhook_url} --api-version {api_version}
 """
 
 helps[
@@ -1232,7 +1232,7 @@ helps[
       text: >
         az iot dps enrollment update -g {resource_group_name} --dps-name {dps_name}
         --enrollment-id {enrollment_id} --initial-twin-properties "{'location':{'region':'USA'}}"
-        --initial-twin-tags "{'version1':'2'}"
+        --initial-twin-tags "{'version':'2'}"
 """
 
 helps[
